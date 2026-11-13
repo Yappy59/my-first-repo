@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ぐんぐん">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F5F8FB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111925" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>ぐんぐんノート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Klee+One:wght@600&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<style>
+/* Layout: one-screen notebook app — grid-paper ground, one task per screen, big pressable buttons. */
+:root{
+  --paper:#F5F8FB; --grid:#E2EAF2; --card:#FFFFFF; --ink:#22314A; --ink2:#5A6A80;
+  --line:#D3DDE8; --press:#C6D3E1; --guide:#F0B4AE;
+  --kata:#D6453A; --kataBg:#FDEBE8;
+  --math:#2570CC; --mathBg:#E7F0FB;
+  --life:#21905C; --lifeBg:#E3F4EA;
+  --star:#EFAE00; --oops:#D9741A; --oopsBg:#FDF0E2;
+  --f-body:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  --f-kana:"Klee One","Hiragino Mincho ProN","YuKyokasho","Yu Mincho",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#111925; --grid:#1A2533; --card:#1B2636; --ink:#E9EFF7; --ink2:#9DAEC4;
+  --line:#2D3B50; --press:#0B111A; --guide:#6E3C3C;
+  --kata:#FF7468; --kataBg:#3A2024; --math:#62A6FF; --mathBg:#172B45;
+  --life:#4CCB8F; --lifeBg:#143226; --star:#FFCC33; --oops:#FFA050; --oopsBg:#3A2A19;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#111925; --grid:#1A2533; --card:#1B2636; --ink:#E9EFF7; --ink2:#9DAEC4;
+  --line:#2D3B50; --press:#0B111A; --guide:#6E3C3C;
+  --kata:#FF7468; --kataBg:#3A2024; --math:#62A6FF; --mathBg:#172B45;
+  --life:#4CCB8F; --lifeBg:#143226; --star:#FFCC33; --oops:#FFA050; --oopsBg:#3A2A19;
+  color-scheme:dark}
+
+html{height:100%;box-sizing:border-box}
+*,*::before,*::after{box-sizing:inherit}
+body{height:100%;margin:0;background-color:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:18px;line-height:1.6;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:28px 28px;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  word-break:keep-all;overflow-wrap:anywhere;line-break:strict}
+.panel,.dialog p{word-break:normal}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button:focus-visible{outline:4px solid var(--math);outline-offset:3px}
+h1,h2,h3{text-wrap:balance;margin:0;line-height:1.35}
+p{margin:0}
+
+#app{min-height:100%;max-width:880px;margin:0 auto;display:flex;flex-direction:column;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 20px}
+.screen{flex:1;display:flex;flex-direction:column;gap:16px;animation:fadein .25s ease}
+@keyframes fadein{from{opacity:.4;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---------- common bits ---------- */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px}
+.brand{font-weight:900;font-size:clamp(22px,5vw,30px);letter-spacing:.04em}
+.brand small{display:block;font-size:13px;font-weight:500;color:var(--ink2);letter-spacing:.02em}
+.pill{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--line);background:var(--card);border-radius:999px;padding:6px 14px;font-weight:700;font-variant-numeric:tabular-nums}
+.pill .s{color:var(--star)}
+.iconbtn{width:52px;height:52px;flex:none;border-radius:16px;border:2px solid var(--line);background:var(--card);font-size:22px;display:grid;place-items:center;box-shadow:0 3px 0 var(--press)}
+.iconbtn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--press)}
+.backrow{display:flex;align-items:center;gap:12px;min-height:56px}
+.backrow h1{font-size:clamp(22px,5vw,30px);font-weight:900}
+.lead{color:var(--ink2);font-size:17px}
+
+.bigbtn{min-height:64px;border-radius:18px;border:3px solid var(--ink);background:var(--ink);color:var(--paper);font-weight:700;font-size:20px;padding:10px 20px;box-shadow:0 5px 0 var(--press)}
+.bigbtn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--press)}
+.bigbtn.ghost{background:var(--card);color:var(--ink);border-color:var(--line)}
+.bigbtn.move{background:var(--star);border-color:var(--star);color:#2A2100}
+.softbtn{min-height:48px;border-radius:14px;border:2px dashed var(--ink2);background:transparent;color:var(--ink2);font-weight:700;padding:6px 16px}
+.rbtns{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+
+/* ---------- home ---------- */
+.hello{font-size:clamp(20px,4.5vw,26px);font-weight:700}
+.tiles{display:grid;gap:14px}
+.tile{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:16px;text-align:left;padding:16px;border-radius:24px;border:3px solid var(--c);background:var(--cb);box-shadow:0 6px 0 var(--c);min-height:120px}
+.tile:active{transform:translateY(4px);box-shadow:0 2px 0 var(--c)}
+.tile .glyph{width:84px;height:84px;border-radius:12px;background:var(--card);border:3px solid var(--c);display:grid;place-items:center;font-size:52px;font-family:var(--f-kana);color:var(--c);position:relative}
+.tile .glyph.num{font-family:var(--f-body);font-weight:900;font-size:30px}
+.tile .tname{display:block;font-size:clamp(22px,5vw,28px);font-weight:900;color:var(--ink)}
+.tile .tsub{display:block;font-size:15px;color:var(--ink2);font-weight:500}
+.t-kata,.tile.kata{--c:var(--kata);--cb:var(--kataBg)}
+.t-math,.tile.math{--c:var(--math);--cb:var(--mathBg)}
+.t-life,.tile.life{--c:var(--life);--cb:var(--lifeBg)}
+.minis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.mini{min-height:72px;border-radius:18px;border:2px solid var(--line);background:var(--card);font-weight:700;font-size:15px;line-height:1.3;padding:8px;box-shadow:0 4px 0 var(--press);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.mini b{font-size:24px;line-height:1}
+.mini:active{transform:translateY(3px);box-shadow:0 1px 0 var(--press)}
+@media (min-width:720px){
+  .tiles{grid-template-columns:repeat(3,1fr)}
+  .tile{grid-template-columns:1fr;justify-items:center;align-content:start;text-align:center;padding:28px 14px 20px;min-height:260px}
+  .tile .glyph{width:112px;height:112px;font-size:72px}
+  .tile .glyph.num{font-size:40px}
+}
+
+/* ---------- level menus ---------- */
+.levels{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.lv{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;text-align:left;padding:14px;border-radius:20px;border:2px solid var(--line);background:var(--card);box-shadow:0 4px 0 var(--press);min-height:84px}
+.lv:active{transform:translateY(3px);box-shadow:0 1px 0 var(--press)}
+.lv .lvg{width:56px;height:56px;border-radius:10px;border:2.5px solid var(--c);color:var(--c);background:var(--cb);display:grid;place-items:center;font-family:var(--f-kana);font-size:26px;line-height:1;text-align:center}
+.lv .lvg.num{font-family:var(--f-body);font-weight:900;font-size:19px}
+.lv .lvn{display:block;font-weight:700;font-size:19px;line-height:1.3}
+.lv .lvs{display:block;font-size:14px;color:var(--ink2);line-height:1.4}
+.lv .lvb{font-size:13px;color:var(--ink2);text-align:right;line-height:1.3;font-variant-numeric:tabular-nums}
+.lv .lvb .s{color:var(--star);font-size:18px}
+.grade{display:inline-block;font-size:12px;font-weight:700;border-radius:6px;padding:0 6px;margin-left:6px;vertical-align:2px;background:var(--cb);color:var(--c);border:1.5px solid var(--c)}
+.sechead{font-size:15px;font-weight:700;color:var(--ink2);letter-spacing:.06em;margin-top:4px}
+
+/* ---------- quiz ---------- */
+.qbar{display:flex;align-items:center;gap:10px;min-height:56px}
+.dots{flex:1;display:flex;justify-content:center;flex-wrap:wrap;gap:8px}
+.dot{width:16px;height:16px;border-radius:50%;background:var(--line);transition:transform .2s}
+.dot.ok{background:var(--star)}
+.dot.miss{background:var(--ink2);opacity:.45}
+.dot.now{transform:scale(1.35);box-shadow:0 0 0 3px var(--card),0 0 0 5px var(--c)}
+.qtitle{flex:1;text-align:center;font-weight:700;color:var(--c)}
+.prompt{text-align:center;font-weight:700;font-size:clamp(20px,4.6vw,28px)}
+.stage{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:180px}
+.maru{position:absolute;inset:0;margin:auto;width:min(80%,320px);height:auto;aspect-ratio:1;pointer-events:none;opacity:0}
+.maru circle{fill:none;stroke:var(--kata);stroke-width:9;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1}
+.maru.show{opacity:.9}
+.maru.show circle{animation:draw .45s ease-out forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+
+.masus{display:flex;gap:0}
+.masu{position:relative;width:clamp(160px,42vmin,250px);aspect-ratio:1;max-width:100%;background:var(--card);border:3px solid var(--c);display:grid;place-items:center;
+  font-family:var(--f-kana);font-weight:600;font-size:clamp(118px,31vmin,185px);line-height:1;color:var(--ink)}
+.masus .masu+.masu{border-left-width:0}
+.masus.two .masu{width:clamp(130px,34vmin,210px);font-size:clamp(96px,25vmin,155px)}
+.masu::before,.masu::after{content:"";position:absolute;pointer-events:none}
+.masu::before{left:50%;top:0;bottom:0;border-left:2px dashed var(--guide)}
+.masu::after{top:50%;left:0;right:0;border-top:2px dashed var(--guide)}
+.masu span{position:relative;z-index:1}
+.masu.small span{font-size:.62em;align-self:end;justify-self:start;margin:0 0 12% 14%}
+.masu.hh{border-color:var(--ink2);color:var(--ink2)}
+.masulabel{font-size:14px;font-weight:700;color:var(--ink2);letter-spacing:.1em}
+.wordcard{font-family:var(--f-kana);font-weight:600;font-size:clamp(52px,12vmin,96px);line-height:1.2;background:var(--card);border:3px solid var(--c);border-radius:20px;padding:12px 28px;max-width:100%;text-align:center;word-break:keep-all}
+.bigemo{font-size:clamp(110px,28vmin,170px);line-height:1}
+
+.choices{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+.choices.words{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.choice{min-height:clamp(76px,12vh,112px);border-radius:20px;border:3px solid var(--line);background:var(--card);box-shadow:0 5px 0 var(--press);
+  display:grid;place-items:center;padding:6px;transition:background .15s,border-color .15s,opacity .2s}
+.choice:active{transform:translateY(3px);box-shadow:0 2px 0 var(--press)}
+.choice .kana{font-family:var(--f-kana);font-weight:600;font-size:clamp(40px,9vmin,64px);line-height:1}
+.choices.words .choice .kana{font-size:clamp(32px,7vmin,48px)}
+.choice .emo{font-size:clamp(48px,11vmin,76px);line-height:1}
+.choice .num{font-weight:900;font-size:clamp(34px,8vmin,56px);line-height:1;font-variant-numeric:tabular-nums}
+.choice .num small{font-size:.5em;font-weight:700}
+.choice .tm{font-weight:900;font-size:clamp(24px,5.4vmin,36px);line-height:1}
+.choice.right{border-color:var(--life);background:var(--lifeBg);box-shadow:0 5px 0 var(--life)}
+.choice.reveal{border-color:var(--life);background:var(--lifeBg);animation:pulse 1s ease 2}
+.choice.wrong{border-color:var(--oops);background:var(--oopsBg);opacity:.5;animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@keyframes pulse{50%{transform:scale(1.05)}}
+.qfoot{display:flex;align-items:center;justify-content:center;gap:12px;min-height:52px;flex-wrap:wrap}
+.msg{font-weight:900;font-size:22px;min-height:1.6em}
+.msg.ok{color:var(--life)} .msg.oops{color:var(--oops)}
+.hint{background:var(--card);border:2px dashed var(--c);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;font-weight:700}
+
+/* math visuals */
+.eq{display:flex;align-items:center;gap:clamp(8px,2vw,18px);font-weight:900;font-size:clamp(52px,13vmin,96px);line-height:1;font-variant-numeric:tabular-nums}
+.eq .op{color:var(--c)}
+.blank,.blank2{display:inline-grid;place-items:center;min-width:1.3em;height:1.25em;border:4px dashed var(--c);border-radius:14px;color:var(--c);font-size:.8em}
+.hissan{display:grid;grid-template-columns:repeat(3,clamp(56px,14vmin,92px));font-weight:900;font-size:clamp(46px,11vmin,74px);line-height:1;font-variant-numeric:tabular-nums}
+.hissan span{aspect-ratio:1;display:grid;place-items:center;border:1.5px solid var(--grid);background:var(--card)}
+.hissan .op{color:var(--c)}
+.hissan .ans{grid-column:1/4;aspect-ratio:auto;height:clamp(64px,15vmin,96px);border-top:5px solid var(--ink)}
+.hissan .ans i{font-style:normal;width:auto;border:4px dashed var(--c);border-radius:14px;color:var(--c);font-size:.8em;padding:0 .4em}
+.tfs{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.tf{display:grid;grid-template-columns:repeat(5,22px);gap:4px;padding:6px;border:2px solid var(--line);border-radius:8px;background:var(--paper)}
+.blk{display:block;width:22px;height:22px;border-radius:5px;border:2px dashed var(--line)}
+.blk.a{background:var(--math);border:0}
+.blk.b{background:var(--oops);border:0}
+.blk.x{background:var(--math);border:0;opacity:.25;position:relative}
+.blk.x::after{content:"";position:absolute;inset:3px;background:linear-gradient(45deg,transparent 44%,var(--ink) 44%,var(--ink) 56%,transparent 56%)}
+.pvs{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+.pvg{display:flex;flex-direction:column;align-items:center;gap:4px}
+.pv{display:flex;align-items:flex-end;gap:3px;flex-wrap:wrap;max-width:300px;justify-content:center}
+.pv .bar{display:block;width:12px;height:60px;border-radius:3px;background:var(--math);background-image:repeating-linear-gradient(transparent 0 5px,rgba(255,255,255,.55) 5px 6px)}
+.pv .cube{display:block;width:12px;height:12px;border-radius:3px;background:var(--oops)}
+.pvlab{font-size:14px;color:var(--ink2)}
+.kgrid{display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+.krow{display:flex;gap:4px;padding:3px 6px;border:2px solid var(--line);border-radius:999px;background:var(--paper)}
+.krow i{display:block;width:12px;height:12px;border-radius:50%;background:var(--math)}
+.clock{width:clamp(200px,48vmin,300px);height:auto;max-width:100%}
+.clock .cf{fill:var(--card);stroke:var(--ink);stroke-width:5}
+.clock .tk{stroke:var(--ink2);stroke-width:1.5}
+.clock .tk5{stroke:var(--ink);stroke-width:3.5}
+.clock .cn{fill:var(--ink);font-family:var(--f-body);font-weight:900;font-size:19px;text-anchor:middle;dominant-baseline:central}
+.clock .hh{stroke:var(--kata);stroke-width:9;stroke-linecap:round}
+.clock .mh{stroke:var(--math);stroke-width:6;stroke-linecap:round}
+.clock .cc{fill:var(--ink)}
+.story{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:14px 18px;font-size:clamp(19px,4.2vw,24px);font-weight:700;line-height:1.7;max-width:640px}
+.items{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;align-items:center}
+.grp{display:flex;flex-wrap:wrap;gap:2px;max-width:220px;justify-content:center;padding:8px 10px;border-radius:14px;background:var(--cb);font-size:clamp(28px,6.5vmin,40px);line-height:1.1}
+.grp.b{background:var(--oopsBg)}
+.grp .gone{opacity:.25;filter:grayscale(1)}
+.plates{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.plate{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;width:96px;padding:10px 6px;border-radius:50%;border:3px solid var(--line);background:var(--card);font-size:24px;line-height:1.1}
+
+@media (orientation:landscape) and (max-height:620px){
+  .quiz{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto 1fr auto;column-gap:20px;row-gap:8px}
+  .quiz .qbar,.quiz .prompt,.quiz .qfoot{grid-column:1/3}
+  .quiz .stage{grid-row:3;grid-column:1}
+  .quiz .hint{grid-row:4;grid-column:1}
+  .quiz .choices{grid-row:3;grid-column:2;align-content:center}
+  .quiz .qfoot{grid-row:5}
+}
+
+/* ---------- result ---------- */
+.result{align-items:center;justify-content:center;text-align:center;gap:14px}
+.hanamaru{width:clamp(160px,40vmin,230px);height:auto}
+.hanamaru path{fill:none;stroke:var(--kata);stroke-width:7;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1s ease-out forwards}
+.hanamaru .hm-petal{animation-delay:.8s;animation-duration:1.2s}
+.rtitle{font-size:clamp(28px,7vw,40px);font-weight:900}
+.rstars{font-size:clamp(34px,8vw,46px);letter-spacing:.06em;line-height:1}
+.st{color:var(--line)} .st.on{color:var(--star)}
+.rsub{color:var(--ink2);font-weight:700}
+.newst{display:flex;align-items:center;gap:12px;background:var(--card);border:2px solid var(--line);border-radius:20px;padding:10px 18px;font-weight:700}
+.stk{font-size:56px;line-height:1;display:inline-block}
+.stk.pop{animation:pop .6s cubic-bezier(.3,1.6,.5,1) both .9s}
+@keyframes pop{from{transform:scale(0) rotate(-30deg)}to{transform:none}}
+.result .rbtns{width:100%;max-width:640px}
+
+/* ---------- life / scenes ---------- */
+.scard{background:var(--card);border:3px solid var(--c);border-radius:24px;padding:18px;display:grid;grid-template-columns:auto 1fr;gap:6px 16px;align-items:center}
+.sicon{grid-row:1/3;font-size:clamp(56px,13vw,84px);line-height:1}
+.stitle{font-size:clamp(21px,4.8vw,28px);font-weight:900;color:var(--c)}
+.stext{font-size:clamp(19px,4.3vw,24px);font-weight:700;line-height:1.75}
+.sopts{display:grid;gap:12px}
+.sopt{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;text-align:left;padding:14px 16px;min-height:76px;border-radius:20px;border:3px solid var(--line);background:var(--card);box-shadow:0 5px 0 var(--press);font-size:clamp(18px,4vw,22px);font-weight:700;line-height:1.55}
+.sopt:active{transform:translateY(3px);box-shadow:0 2px 0 var(--press)}
+.sopt .mark{width:44px;height:44px;border-radius:50%;border:3px solid var(--c);color:var(--c);display:grid;place-items:center;font-family:var(--f-kana);font-size:24px}
+.sopt.right{border-color:var(--life);background:var(--lifeBg);box-shadow:0 5px 0 var(--life)}
+.sopt.wrong{border-color:var(--oops);background:var(--oopsBg);opacity:.6}
+.sopt.dim{opacity:.45}
+.sfb{border-radius:20px;padding:16px 18px;display:grid;gap:10px;font-size:clamp(18px,4vw,21px);font-weight:500;line-height:1.75}
+.sfb.good{background:var(--lifeBg);border:3px solid var(--life)}
+.sfb.soft{background:var(--oopsBg);border:3px dashed var(--oops)}
+.fbh{font-weight:900;font-size:1.2em}
+.sfb.good .fbh{color:var(--life)} .sfb.soft .fbh{color:var(--oops)}
+.plus{display:inline-block;margin-left:8px;color:var(--star);background:var(--card);border-radius:999px;padding:0 10px;font-size:.8em}
+.tip{background:var(--card);border-radius:14px;padding:12px 14px}
+.tip b{display:block;font-size:14px;color:var(--life);letter-spacing:.1em}
+.small{font-size:.9em;color:var(--ink2)}
+.sclist{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.sc{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;text-align:left;padding:12px 14px;border-radius:18px;border:2px solid var(--line);background:var(--card);box-shadow:0 4px 0 var(--press);min-height:72px;font-weight:700;line-height:1.35}
+.sc:active{transform:translateY(3px);box-shadow:0 1px 0 var(--press)}
+.sc .e{font-size:34px;line-height:1}
+.sc .ck{width:32px;height:32px;border-radius:50%;border:2.5px solid var(--line);display:grid;place-items:center;font-size:18px;color:transparent}
+.sc .ck.on{background:var(--life);border-color:var(--life);color:var(--card)}
+.introbtn{display:flex;gap:16px;align-items:center;text-align:left;padding:16px 18px;border-radius:22px;border:3px solid var(--c);background:var(--cb);box-shadow:0 5px 0 var(--c);font-weight:900;font-size:clamp(20px,4.6vw,24px)}
+.introbtn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--c)}
+.introbtn .e{font-size:44px}
+.introbtn small{display:block;font-weight:500;font-size:15px;color:var(--ink2)}
+.progress{height:14px;border-radius:999px;background:var(--line);overflow:hidden}
+.progress i{display:block;height:100%;background:var(--life);border-radius:999px}
+.icard{flex:1;background:var(--card);border:3px solid var(--c);border-radius:26px;padding:22px;display:flex;flex-direction:column;gap:14px;justify-content:center}
+.icard .e{font-size:72px;line-height:1;text-align:center}
+.icard h2{font-size:clamp(24px,6vw,34px);font-weight:900;color:var(--c);text-align:center}
+.icard p,.icard li{font-size:clamp(19px,4.3vw,23px);font-weight:700;line-height:1.8}
+.icard ul{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.icard li{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;background:var(--cb);border-radius:14px;padding:10px 14px}
+.icard li span{font-size:28px;line-height:1.4}
+.icard li small{display:block;font-weight:500;font-size:.85em;color:var(--ink2);line-height:1.6}
+.idots{display:flex;justify-content:center;gap:8px}
+.idots i{width:12px;height:12px;border-radius:50%;background:var(--line)}
+.idots i.on{background:var(--c)}
+.inav{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+ruby rt{font-size:.45em;font-weight:500}
+
+/* ---------- stickers ---------- */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:10px;background:var(--card);border:2px solid var(--line);border-radius:22px;padding:14px}
+.slot{aspect-ratio:1;border-radius:16px;border:2.5px dashed var(--line);display:grid;place-items:center;font-size:clamp(34px,8vw,46px);color:var(--line);font-weight:900}
+.slot.on{border:2.5px solid transparent;background:var(--paper)}
+
+/* ---------- move break ---------- */
+.move{align-items:center;text-align:center;justify-content:center}
+.mvtext{font-size:clamp(26px,6.5vw,40px);font-weight:900;line-height:1.5}
+.mvemo{font-size:clamp(80px,20vw,120px);line-height:1}
+.ring{width:clamp(150px,36vmin,210px);height:auto}
+.ring circle{fill:none;stroke-width:12}
+.ring .bg{stroke:var(--line)}
+.ring .fg{stroke:var(--star);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset 1s linear}
+.ring text{fill:var(--ink);font-family:var(--f-body);font-weight:900;font-size:44px;text-anchor:middle;dominant-baseline:central}
+
+/* ---------- parent ---------- */
+.panel{background:var(--card);border:2px solid var(--line);border-radius:20px;padding:16px 18px;display:grid;gap:12px;-webkit-user-select:text;user-select:text}
+.panel h2{font-size:19px;font-weight:900}
+.panel p,.panel li{font-size:16px;line-height:1.75;font-weight:500}
+.panel ul{margin:0;padding-left:1.2em;display:grid;gap:4px}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-weight:700}
+.seg{display:inline-flex;border:2px solid var(--line);border-radius:14px;overflow:hidden}
+.seg button{min-width:64px;min-height:48px;border:0;background:var(--card);font-weight:700}
+.seg button+button{border-left:2px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.stat{background:var(--paper);border-radius:14px;padding:10px 12px}
+.stat b{display:block;font-size:26px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat span{font-size:13px;color:var(--ink2)}
+.warnbtn{min-height:48px;border-radius:14px;border:2px solid var(--oops);background:transparent;color:var(--oops);font-weight:700;padding:6px 16px}
+.note{font-size:14px;color:var(--ink2);line-height:1.7}
+
+.overlay{position:fixed;inset:0;background:rgba(10,16,26,.55);display:grid;place-items:center;padding:20px;z-index:20}
+.dialog{background:var(--card);border-radius:24px;padding:24px;max-width:420px;width:100%;display:grid;gap:16px;text-align:center}
+.dialog p{font-size:22px;font-weight:900}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div id="app" aria-live="polite"></div>
+<script>
+(()=>{
+"use strict";
+document.documentElement.lang="ja";
+const $app=document.getElementById("app");
+const $=s=>document.querySelector(s);
+
+/* ================= storage ================= */
+const store={
+  get(k,d){try{const v=localStorage.getItem("gungun."+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem("gungun."+k,JSON.stringify(v))}catch(e){}}
+};
+let S=Object.assign({stars:0,stickers:[],best:{},done:{},rounds:0,moves:0},store.get("state",{}));
+let CFG=Object.assign({q:5,voice:true,sound:true},store.get("cfg",{}));
+const save=()=>{store.set("state",S);store.set("cfg",CFG)};
+
+/* ================= helpers ================= */
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const any=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const sample=(a,n)=>shuffle(a).slice(0,n);
+let TM=[];
+const later=(f,ms)=>TM.push(setTimeout(f,ms));
+const every=(f,ms)=>TM.push(setInterval(f,ms));
+const clearTimers=()=>{TM.forEach(t=>{clearTimeout(t);clearInterval(t)});TM=[]};
+
+/* ================= sound & voice ================= */
+let AC=null;
+function ac(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){AC=null}}
+  if(AC&&AC.state==="suspended"){try{AC.resume()}catch(e){}}
+  return AC;
+}
+function tone(f,t0,d,type,g){
+  const a=ac();if(!a)return;
+  const o=a.createOscillator(),v=a.createGain(),t=a.currentTime+t0;
+  o.type=type||"sine";o.frequency.value=f;
+  v.gain.setValueAtTime(0.0001,t);v.gain.exponentialRampToValueAtTime(g||0.14,t+0.02);v.gain.exponentialRampToValueAtTime(0.0001,t+d);
+  o.connect(v);v.connect(a.destination);o.start(t);o.stop(t+d+0.05);
+}
+function sfx(k){
+  if(!CFG.sound)return;
+  if(k==="ok"){tone(784,0,.16,"triangle");tone(1175,.12,.28,"triangle")}
+  else if(k==="ng"){tone(330,0,.22,"sine",.08);tone(294,.12,.25,"sine",.06)}
+  else if(k==="fan"){[523,659,784,1047].forEach((f,i)=>tone(f,i*.13,.32,"triangle",.12))}
+  else if(k==="tap"){tone(660,0,.05,"sine",.04)}
+  else if(k==="tick"){tone(990,0,.04,"square",.02)}
+}
+let JAVOICE=null;
+function pickVoice(){try{const vs=speechSynthesis.getVoices();JAVOICE=vs.find(v=>/^ja/i.test(v.lang)&&/kyoko|o-ren|siri/i.test(v.name))||vs.find(v=>/^ja/i.test(v.lang))||null}catch(e){}}
+try{pickVoice();speechSynthesis.onvoiceschanged=pickVoice}catch(e){}
+function speak(text){
+  if(!CFG.voice||!text)return;
+  try{
+    speechSynthesis.cancel();
+    const clean=String(text).replace(/<rt>.*?<\/rt>/g,"").replace(/<[^>]+>/g,"").replace(/\p{Extended_Pictographic}|️/gu,"").replace(/[★⭐]/g,"");
+    const u=new SpeechSynthesisUtterance(clean);u.lang="ja-JP";u.rate=0.9;u.pitch=1.05;if(JAVOICE)u.voice=JAVOICE;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+const stopSpeak=()=>{try{speechSynthesis.cancel()}catch(e){}};
+
+/* ================= katakana data ================= */
+const ROWS={
+  a:["アイウエオ","あいうえお"],ka:["カキクケコ","かきくけこ"],sa:["サシスセソ","さしすせそ"],ta:["タチツテト","たちつてと"],na:["ナニヌネノ","なにぬねの"],
+  ha:["ハヒフヘホ","はひふへほ"],ma:["マミムメモ","まみむめも"],ya:["ヤユヨ","やゆよ"],ra:["ラリルレロ","らりるれろ"],wa:["ワヲン","わをん"],
+  ga:["ガギグゲゴ","がぎぐげご"],za:["ザジズゼゾ","ざじずぜぞ"],da:["ダヂヅデド","だぢづでど"],ba:["バビブベボ","ばびぶべぼ"],pa:["パピプペポ","ぱぴぷぺぽ"]
+};
+const H={},ROWOF={};
+for(const r in ROWS){const[k,h]=ROWS[r];[...k].forEach((c,i)=>{H[c]=h[i];ROWOF[c]=r})}
+Object.assign(H,{"ャ":"ゃ","ュ":"ゅ","ョ":"ょ","ッ":"っ","ー":"ー"});
+const itemsOf=rows=>rows.flatMap(r=>[...ROWS[r][0]].map(c=>({k:c,h:H[c],row:r})));
+const YOUON=[];
+[..."キシチニヒミリギジビピ"].forEach(b=>[..."ャュョ"].forEach(s=>YOUON.push({k:b+s,h:H[b]+H[s],base:b})));
+const SIMILAR=[["シ","ツ","ソ","ン"],["ク","ケ","タ","ワ"],["ウ","ワ","フ","ラ"],["ヌ","ス","メ","ナ"],["コ","ユ","ロ","ヨ"],["チ","テ","ナ","キ"],["マ","ム","ア","ヤ"],["エ","ユ","コ","ニ"],["ハ","ル","リ","ソ"]];
+const SIM_TIPS={
+  "シ":"シは てんが ひだりに たてに ならぶよ。 さいごは したから うえへ はらう。",
+  "ツ":"ツは てんが うえに よこに ならぶよ。 さいごは うえから したへ はらう。",
+  "ソ":"ソは てんが うえ。 さいごは うえから したへ はらう。",
+  "ン":"ンは てんが ひだり。 さいごは したから うえへ はらう。",
+  "ク":"クは 2かく。 なかに なにも ないよ。",
+  "ケ":"ケは よこぼうが まんなかを つきぬけるよ。",
+  "タ":"タは クの なかに てんが 1つ。",
+  "ワ":"ワは うえが たいらな はこの かたち。",
+  "ウ":"ウは うえに てんが 1つ のってるよ。",
+  "フ":"フは 1かくで かく。 てんは ないよ。",
+  "ラ":"ラは うえに みじかい よこぼうが あるよ。",
+  "ヌ":"ヌは フに ななめの てんが つくよ。",
+  "ス":"スは さいごの てんが みぎしたに でるよ。",
+  "メ":"メは ななめの せんが 2ほん クロス。",
+  "ナ":"ナは よこぼうと たてぼうの 2かく。",
+  "コ":"コは みぎが とじてて、 ひだりが あいてるよ。",
+  "ユ":"ユは したの よこぼうが ながく でるよ。",
+  "ロ":"ロは ぜんぶ とじた しかく。",
+  "ヨ":"ヨは よこぼうが 3ぼん。",
+  "チ":"チは うえに ななめの せんが あるよ。",
+  "テ":"テは うえに よこぼうが 2ほん。",
+  "キ":"キは よこぼうが 2ほん で、 たてが つきぬける。",
+  "マ":"マは した が みぎむきの てん。",
+  "ム":"ムは さんかくの みぎに てんが あるよ。",
+  "ア":"アは マに にてるけど、 したに ながい はらいが あるよ。",
+  "ヤ":"ヤは ななめの せんが つきでるよ。",
+  "エ":"エは よこぼう 2ほんを たてで つなぐよ。",
+  "ニ":"ニは よこぼうが 2ほん だけ。",
+  "ハ":"ハは はなれた 2ほんの せん。",
+  "ル":"ルは みぎの せんが はねあがるよ。",
+  "リ":"リは みぎの せんが ながいよ。"
+};
+const WORDS=[["ライオン","🦁"],["パンダ","🐼"],["ペンギン","🐧"],["コアラ","🐨"],["ゴリラ","🦍"],["キリン","🦒"],["カンガルー","🦘"],["イルカ","🐬"],["シマウマ","🦓"],["ハムスター","🐹"],["フラミンゴ","🦩"],
+  ["バナナ","🍌"],["メロン","🍈"],["トマト","🍅"],["ケーキ","🍰"],["ピザ","🍕"],["パン","🍞"],["アイス","🍨"],["ドーナツ","🍩"],["チーズ","🧀"],["レモン","🍋"],["クッキー","🍪"],["ハンバーガー","🍔"],["ポテト","🍟"],["ラーメン","🍜"],["カレー","🍛"],["ジュース","🧃"],["ミルク","🥛"],["サンドイッチ","🥪"],["ホットドッグ","🌭"],["ブロッコリー","🥦"],
+  ["トラック","🚚"],["バス","🚌"],["タクシー","🚕"],["ロケット","🚀"],["ヘリコプター","🚁"],["ヨット","⛵"],
+  ["ギター","🎸"],["ピアノ","🎹"],["テレビ","📺"],["カメラ","📷"],["ロボット","🤖"],["プレゼント","🎁"],["スプーン","🥄"],["ネクタイ","👔"],["ドレス","👗"],["シャツ","👕"],["ベッド","🛏️"],["ドア","🚪"],["ランドセル","🎒"],["クレヨン","🖍️"],["ノート","📓"],["マイク","🎤"],["テント","⛺"],["ベル","🔔"],["トイレ","🚽"],["ボール","⚽"]];
+
+/* ================= question builders ================= */
+const isSmall=c=>"ャュョッァィゥェォゃゅょっ".includes(c);
+function masuHTML(str,cls){
+  const cs=[...str];
+  return `<div class="masus ${cs.length>1?"two":""}">${cs.map(c=>`<span class="masu ${cls} ${isSmall(c)?"small":""}"><span>${c}</span></span>`).join("")}</div>`;
+}
+function kanaQ(it,others,dir,hint){
+  const opts=shuffle([it,...others]);
+  const kh=dir==="kh";
+  return{theme:"kata",key:it.k+dir,
+    prompt:kh?"この カタカナは どれかな？":"カタカナで かくと どれかな？",
+    show:masuHTML(kh?it.k:it.h,kh?"kk":"hh")+`<div class="masulabel">${kh?"カタカナ":"ひらがな"}</div>`,
+    choices:opts.map(o=>({v:o.k,html:`<span class="kana">${kh?o.h:o.k}</span>`})),
+    ans:it.k,say:it.h,sayQ:kh?"この カタカナは どれかな？":`「${it.h}」は カタカナで どれかな？`,hint};
+}
+const rowHint=it=>`「${ROWS[it.row][0][0]}」の ぎょうの じ だよ<br><span style="font-family:var(--f-kana);font-size:30px;letter-spacing:.2em">${ROWS[it.row][0]}</span>`;
+function makeRows(rows,n){
+  const pool=itemsOf(rows);
+  const targets=[];while(targets.length<n)targets.push(...shuffle(pool));
+  return targets.slice(0,n).map(it=>kanaQ(it,sample(pool.filter(p=>p.k!==it.k),3),Math.random()<.65?"kh":"hk",rowHint(it)));
+}
+function makeSimilar(n){
+  const out=[];const used=new Set();let guard=0;
+  while(out.length<n&&guard++<300){
+    const g=any(SIMILAR);const c=any(g);if(used.has(c)&&used.size<20)continue;used.add(c);
+    const it={k:c,h:H[c]};
+    const others=g.filter(x=>x!==c).map(x=>({k:x,h:H[x]}));
+    out.push(kanaQ(it,others,Math.random()<.7?"hk":"kh",SIM_TIPS[c]||null));
+  }
+  return out;
+}
+function makeYouon(n){
+  return sample(YOUON,n).map(it=>{
+    const same=sample(YOUON.filter(y=>y.base===it.base&&y.k!==it.k),2);
+    const other=sample(YOUON.filter(y=>y.base!==it.base),1);
+    return kanaQ(it,[...same,...other],Math.random()<.6?"kh":"hk",
+      `${[...it.k][0]} ＋ ちいさい ${[...it.k][1]}<br>「${[...it.h][0]}」と「${[...it.h][1]}」を くっつけて よむよ`);
+  });
+}
+function makeWords(n,mode){
+  return sample(WORDS,n).map(w=>{
+    const opts=shuffle([w,...sample(WORDS.filter(x=>x[0]!==w[0]),3)]);
+    if(mode==="w2e")return{theme:"kata",key:w[0],prompt:"この ことばの えは どれかな？",
+      show:`<div class="wordcard">${w[0]}</div>`,
+      choices:opts.map(o=>({v:o[0],html:`<span class="emo">${o[1]}</span>`})),
+      ans:w[0],say:w[0],sayQ:"この ことばの えは どれかな？",hint:`さいしょの じは「${H[w[0][0]]||w[0][0]}」だよ`};
+    return{theme:"kata",key:w[0],prompt:"この えの ことばは どれかな？",
+      show:`<div class="bigemo">${w[1]}</div>`,
+      choices:opts.map(o=>({v:o[0],html:`<span class="kana">${o[0]}</span>`})),
+      ans:w[0],say:w[0],sayQ:"この えの ことばは どれかな？",hint:`さいしょの じは「${w[0][0]}」だよ`,cls:"words"};
+  });
+}
+
+/* math */
+function numChoices(ans,offs){
+  const set=new Set([ans]);
+  for(const o of shuffle(offs||[1,-1,2,-2,10,-10])){if(set.size>=4)break;const v=ans+o;if(v>=0)set.add(v)}
+  let k=3;while(set.size<4){set.add(ans+k);k++}
+  return shuffle([...set]);
+}
+function mathQ(key,show,ans,o){
+  o=o||{};
+  return{theme:"math",key,prompt:o.prompt||"こたえは どれかな？",show,
+    choices:numChoices(ans,o.offs).map(v=>({v:String(v),html:`<span class="num">${v}${o.unit?`<small>${o.unit}</small>`:""}</span>`})),
+    ans:String(ans),say:o.say||String(ans),sayQ:o.sayQ,hint:o.hint||null};
+}
+const eq=(a,op,b)=>`<div class="eq"><span>${a}</span><span class="op">${op}</span><span>${b}</span><span class="op">=</span><span class="blank">?</span></div>`;
+function frames(a,b,mode){
+  const total=mode==="add"?a+b:a;
+  const cells=[];
+  for(let i=0;i<Math.max(10,Math.ceil(total/10)*10);i++){
+    let c="";
+    if(i<total){
+      if(mode==="add")c=i<a?"a":"b";
+      else{const crossFromTen=a>10&&b>a-10;c=crossFromTen?(i<b?"x":"a"):(i>=a-b?"x":"a")}
+    }
+    cells.push(`<i class="blk ${c}"></i>`);
+  }
+  let html="";for(let i=0;i<cells.length;i+=10)html+=`<div class="tf">${cells.slice(i,i+10).join("")}</div>`;
+  return `<div class="tfs">${html}</div>`;
+}
+function pv(n){const t=Math.floor(n/10),o=n%10;return `<div class="pvg"><div class="pv">${'<i class="bar"></i>'.repeat(t)}${'<i class="cube"></i>'.repeat(o)}</div><div class="pvlab">${n}： 10が ${t}こ、 1が ${o}こ</div></div>`}
+const hissan=(a,op,b)=>{const A=String(a).padStart(2," "),B=String(b).padStart(2," ");
+  return `<div class="hissan" aria-label="${a} ${op} ${b}"><span></span><span>${A[0]}</span><span>${A[1]}</span><span class="op">${op}</span><span>${B[0]}</span><span>${B[1]}</span><span class="ans"><i>?</i></span></div>`};
+function uniq(n,f){const out=[],seen=new Set();let g=0;while(out.length<n&&g++<600){const q=f();if(seen.has(q.key))continue;seen.add(q.key);out.push(q)}return out}
+
+const genAdd10=()=>{const a=rnd(1,9),b=rnd(1,10-a);return mathQ(`${a}+${b}`,eq(a,"+",b),a+b,{sayQ:`${a} たす ${b} は？`,say:`${a} たす ${b} は ${a+b}`,hint:frames(a,b,"add")+"<span>あおと オレンジを あわせて かぞえよう</span>"})};
+const genSub10=()=>{const a=rnd(2,10),b=rnd(1,a);return mathQ(`${a}-${b}`,eq(a,"−",b),a-b,{sayQ:`${a} ひく ${b} は？`,say:`${a} ひく ${b} は ${a-b}`,hint:frames(a,b,"sub")+"<span>✕の ぶんを とると、 のこりは いくつ？</span>"})};
+const genAdd20=()=>{const a=rnd(2,9),b=rnd(Math.max(2,11-a),9);return mathQ(`${a}+${b}`,eq(a,"+",b),a+b,{sayQ:`${a} たす ${b} は？`,say:`${a} たす ${b} は ${a+b}`,hint:frames(a,b,"add")+`<span>まず 10を つくろう！ ${a}は あと ${10-a}で 10</span>`})};
+const genSub20=()=>{const a=rnd(11,18),b=rnd(a-9,9);return mathQ(`${a}-${b}`,eq(a,"−",b),a-b,{sayQ:`${a} ひく ${b} は？`,say:`${a} ひく ${b} は ${a-b}`,hint:frames(a,b,"sub")+`<span>10から ${b}を ひいて ${10-b}。 ${10-b}と ${a-10}で いくつ？</span>`})};
+const genAdd2=()=>{const a=rnd(10,79),b=rnd(10,99-a);return mathQ(`${a}+${b}`,hissan(a,"+",b),a+b,{sayQ:`${a} たす ${b} は？`,say:`${a} たす ${b} は ${a+b}`,offs:[1,-1,10,-10,9,11],hint:`<div class="pvs">${pv(a)}${pv(b)}</div><span>1の くらいから けいさん しよう。 10を こえたら、 10の くらいに 1 くりあげ！</span>`})};
+const genSub2=()=>{const a=rnd(20,99),b=rnd(10,a-1);return mathQ(`${a}-${b}`,hissan(a,"−",b),a-b,{sayQ:`${a} ひく ${b} は？`,say:`${a} ひく ${b} は ${a-b}`,offs:[1,-1,10,-10,9,11],hint:`<div class="pvs">${pv(a)}</div><span>1の くらいが ひけない ときは、 10の くらいから 10を かりてこよう</span>`})};
+const genKuku=dans=>()=>{const a=any(dans),b=rnd(1,9);
+  const dots=`<div class="kgrid">${Array.from({length:b},()=>`<div class="krow">${"<i></i>".repeat(a)}</div>`).join("")}</div>`;
+  return mathQ(`${a}x${b}`,eq(a,"×",b),a*b,{sayQ:`${a} かける ${b} は？`,say:`${a} かける ${b} は ${a*b}`,offs:[a,-a,1,-1,b,-b],hint:dots+`<span>${a}こずつ、 ${b}つ ぶん</span>`})};
+const fun=m=>m%10===5?`${m}ふん`:`${m}ぷん`;
+const tl=(h,m)=>m===0?`${h}じ`:`${h}じ${fun(m)}`;
+function clockSVG(h,m){
+  const P=(r,deg)=>[(100+r*Math.sin(deg*Math.PI/180)).toFixed(1),(100-r*Math.cos(deg*Math.PI/180)).toFixed(1)];
+  let s=`<svg class="clock" viewBox="0 0 200 200" role="img" aria-label="とけい"><circle cx="100" cy="100" r="94" class="cf"/>`;
+  for(let i=0;i<60;i++){const[x1,y1]=P(i%5?84:78,i*6),[x2,y2]=P(89,i*6);s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${i%5?"tk":"tk5"}"/>`}
+  for(let n=1;n<=12;n++){const[x,y]=P(65,n*30);s+=`<text x="${x}" y="${y}" class="cn">${n}</text>`}
+  const[hx,hy]=P(44,((h%12)+m/60)*30),[mx,my]=P(72,m*6);
+  return s+`<line x1="100" y1="100" x2="${hx}" y2="${hy}" class="hh"/><line x1="100" y1="100" x2="${mx}" y2="${my}" class="mh"/><circle cx="100" cy="100" r="6" class="cc"/></svg>`;
+}
+const genClock=()=>{
+  const h=rnd(1,12),m=rnd(0,11)*5;const ans=tl(h,m);
+  const cand=shuffle([tl(m===0?12:m/5,(h%12)*5),tl(h%12+1,m),tl(h,(m+5)%60),tl(h,(m+55)%60),tl(h===1?12:h-1,m),tl(h,(m+30)%60)]);
+  const set=[ans];for(const c of cand){if(set.length>=4)break;if(!set.includes(c))set.push(c)}
+  return{theme:"math",key:ans,prompt:"なんじ なんぷん かな？",show:clockSVG(h,m),
+    choices:shuffle(set).map(t=>({v:t,html:`<span class="tm">${t}</span>`})),ans,say:ans,sayQ:"なんじ なんぷん かな？",
+    hint:`<span><span style="color:var(--kata)">みじかい はり</span> → 「なんじ」<br><span style="color:var(--math)">ながい はり</span> → 「なんぷん」<br>すうじ 1つ すすむと 5ふん だよ</span>`};
+};
+const FOODS=[["🍎","りんご"],["🍙","おにぎり"],["🍓","いちご"],["🍬","あめ"],["🍩","ドーナツ"],["🍪","クッキー"]];
+const grp=(e,n,cls,gone)=>`<div class="grp ${cls||""}">${Array.from({length:n},(_,i)=>`<span class="${gone&&i>=n-gone?"gone":""}">${e}</span>`).join("")}</div>`;
+const story=(t,vis)=>`<p class="story">${t}</p><div class="items">${vis}</div>`;
+const STORIES=[
+  ()=>{const[f,n]=any(FOODS),a=rnd(2,6),b=rnd(1,9-a);return mathQ("s1"+a+b+n,story(`${n}が ${a}こ あります。 ${b}こ もらいました。 ぜんぶで なんこ？`,grp(f,a)+grp(f,b,"b")),a+b,{prompt:"おはなしを よんでね",unit:"こ",sayQ:`${n}が ${a}こ あります。 ${b}こ もらいました。 ぜんぶで なんこ？`,say:`${a+b}こ`,hint:`<span>「ぜんぶで」は たしざん！<br>${a} ＋ ${b} ＝ ？</span>`})},
+  ()=>{const[f,n]=any(FOODS),a=rnd(4,10),b=rnd(1,a-1);return mathQ("s2"+a+b+n,story(`${n}が ${a}こ あります。 ${b}こ たべました。 のこりは なんこ？`,grp(f,a)),a-b,{prompt:"おはなしを よんでね",unit:"こ",sayQ:`${n}が ${a}こ あります。 ${b}こ たべました。 のこりは なんこ？`,say:`${a-b}こ`,hint:`${grp(f,a,"",b)}<span>「のこりは」は ひきざん！<br>${a} − ${b} ＝ ？</span>`})},
+  ()=>{const a=rnd(3,7),b=rnd(1,9-a);return mathQ("s3"+a+b,story(`こうえんに こどもが ${a}にん います。 あとから ${b}にん きました。 みんなで なんにん？`,grp("🧒",a)+grp("👧",b,"b")),a+b,{prompt:"おはなしを よんでね",unit:"にん",sayQ:`こうえんに こどもが ${a}にん います。 あとから ${b}にん きました。 みんなで なんにん？`,say:`${a+b}にん`,hint:`<span>「みんなで」は たしざん！<br>${a} ＋ ${b} ＝ ？</span>`})},
+  ()=>{const a=rnd(4,10),b=rnd(1,a-1);return mathQ("s4"+a+b,story(`とりが ${a}わ います。 ${b}わ とんで いきました。 のこりは なんわ？`,grp("🐦",a)),a-b,{prompt:"おはなしを よんでね",unit:"わ",sayQ:`とりが ${a}わ います。 ${b}わ とんで いきました。 のこりは なんわ？`,say:`${a-b}わ`,hint:`${grp("🐦",a,"",b)}<span>${a} − ${b} ＝ ？</span>`})},
+  ()=>{const a=rnd(3,8),b=rnd(2,6);return mathQ("s5"+a+b,story(`カードを ${a}まい もっています。 ともだちから ${b}まい もらいました。 ぜんぶで なんまい？`,grp("🃏",a)+grp("🃏",b,"b")),a+b,{prompt:"おはなしを よんでね",unit:"まい",sayQ:`カードを ${a}まい もっています。 ともだちから ${b}まい もらいました。 ぜんぶで なんまい？`,say:`${a+b}まい`,hint:`<span>${a} ＋ ${b} ＝ ？</span>`})},
+  ()=>{const[f,n]=any(FOODS),a=rnd(2,5),b=rnd(2,4);return mathQ("s6"+a+b+n,story(`おさら 1まいに ${n}が ${a}こずつ のっています。 おさら ${b}まいでは、 ぜんぶで なんこ？`,`<div class="plates">${Array.from({length:b},()=>`<div class="plate">${f.repeat(a)}</div>`).join("")}</div>`),a*b,{prompt:"おはなしを よんでね（2ねんせい）",unit:"こ",offs:[a,-a,1,-1,2],sayQ:`おさら 1まいに ${n}が ${a}こずつ のっています。 おさら ${b}まいでは、 ぜんぶで なんこ？`,say:`${a*b}こ`,hint:`<span>「${a}こずつ ${b}つ ぶん」は かけざん！<br>${a} × ${b} ＝ ？</span>`})}
+];
+const genStory=()=>any(STORIES)();
+
+/* ================= levels ================= */
+const LEVELS=[
+  {id:"k1",sec:"kataMenu",g:"ア",name:"ア 〜 ノ",sub:"ア・カ・サ・タ・ナ の ぎょう",make:n=>makeRows(["a","ka","sa","ta","na"],n)},
+  {id:"k2",sec:"kataMenu",g:"ハ",name:"ハ 〜 ン",sub:"ハ・マ・ヤ・ラ・ワ の ぎょう",make:n=>makeRows(["ha","ma","ya","ra","wa"],n)},
+  {id:"k3",sec:"kataMenu",g:"シツ",name:"にている じ",sub:"シと ツ、 ソと ン など",make:makeSimilar},
+  {id:"k4",sec:"kataMenu",g:"ガ",name:"てんてん・まる",sub:"ガ・ザ・ダ・バ・パ",make:n=>makeRows(["ga","za","da","ba","pa"],n)},
+  {id:"k5",sec:"kataMenu",g:"キャ",name:"ちいさい ャ・ュ・ョ",sub:"キャ・シュ・チョ など",make:makeYouon},
+  {id:"k6",sec:"kataMenu",g:"パン",name:"ことばを よもう",sub:"ことばに あう えを えらぶ",make:n=>makeWords(n,"w2e")},
+  {id:"k7",sec:"kataMenu",g:"🦁",name:"えを みて えらぼう",sub:"えに あう ことばを えらぶ",make:n=>makeWords(n,"e2w")},
+  {id:"m1",sec:"mathMenu",gr:1,g:"3+4",name:"たしざん",sub:"10までの かず",make:n=>uniq(n,genAdd10)},
+  {id:"m2",sec:"mathMenu",gr:1,g:"7−2",name:"ひきざん",sub:"10までの かず",make:n=>uniq(n,genSub10)},
+  {id:"m3",sec:"mathMenu",gr:1,g:"8+5",name:"くりあがりの たしざん",sub:"10を つくって かんがえる",make:n=>uniq(n,genAdd20)},
+  {id:"m4",sec:"mathMenu",gr:1,g:"13−8",name:"くりさがりの ひきざん",sub:"10から ひいて かんがえる",make:n=>uniq(n,genSub20)},
+  {id:"m5",sec:"mathMenu",gr:"1・2",g:"🕒",name:"とけい",sub:"なんじ なんぷん？",make:n=>uniq(n,genClock)},
+  {id:"m6",sec:"mathMenu",gr:"1・2",g:"🍎",name:"ぶんしょうだい",sub:"おはなしの もんだい",make:n=>uniq(n,genStory)},
+  {id:"m7",sec:"mathMenu",gr:2,g:"24+35",name:"2けたの たしざん",sub:"ひっさんで けいさん",make:n=>uniq(n,genAdd2)},
+  {id:"m8",sec:"mathMenu",gr:2,g:"52−17",name:"2けたの ひきざん",sub:"ひっさんで けいさん",make:n=>uniq(n,genSub2)},
+  {id:"m9",sec:"mathMenu",gr:2,g:"2×3",name:"かけざん ①",sub:"2・3・4・5の だん",make:n=>uniq(n,genKuku([2,3,4,5]))},
+  {id:"m10",sec:"mathMenu",gr:2,g:"7×8",name:"かけざん ②",sub:"6・7・8・9・1の だん",make:n=>uniq(n,genKuku([6,7,8,9,1]))}
+];
+const LV=Object.fromEntries(LEVELS.map(l=>[l.id,l]));
+
+/* ================= ADHD case studies ================= */
+const SCENES=[
+ {id:"c1",icon:"🏫",title:"じっと して いられない",text:"じゅぎょうちゅう。 からだが むずむず して、 じっと すわって いるのが つらく なってきた。",opts:[
+  {t:"たちあがって、 きょうしつを あるきまわる。",fb:"うごきたく なる きもち、 よく わかるよ。 でも みんなが びっくり しちゃうかも。 すわった まま できる うごきは ないかな？"},
+  {t:"すわった まま、 てを 「ぐー・ぱー」と 5かい する。",good:true,fb:"すわった まま からだを すこし うごかすと、 むずむずが おさまって くるよ。"},
+  {t:"となりの ともだちに はなしかける。",fb:"はなしたく なるよね。 でも ともだちも べんきょう ちゅう。 じぶん ひとりで できる ことを さがして みよう。"}],
+  tip:"からだを すこし うごかすと、 あたまが すっきり する ことが あるよ。 せんせいと 「むずむず したときの あいず」を きめて おくのも いいね。"},
+ {id:"c2",icon:"📺",title:"しゅくだいと テレビ",text:"しゅくだいを はじめたいけど、 テレビの おとが きになって、 ぜんぜん すすまない。",opts:[
+  {t:"テレビを みながら しゅくだいを する。",fb:"どっちも したいよね。 でも テレビが ついていると、 あたまが テレビの ほうに ひっぱられちゃうんだ。"},
+  {t:"テレビを けして、 タイマーを 10ぷんに して はじめる。",good:true,fb:"みじかい じかんに くぎると、 さいごまで がんばり やすいよ。"},
+  {t:"きょうは やめて、 あした ぜんぶ やる。",fb:"あしたの じぶんが たいへんに なっちゃうかも。 ちいさく はじめて みよう。"}],
+  tip:"ADHDの ある ひとの あたまは、 みえる もの や きこえる ものに ひっぱられ やすい ことが あるよ。 きになる ものを とおざけるのが コツ。"},
+ {id:"c3",icon:"🎒",title:"また わすれもの",text:"また たいそうぎを わすれちゃった。 あさは いつも ばたばた して しまう。",opts:[
+  {t:"「どうせ また わすれる」と あきらめる。",fb:"がっかり するよね。 でも あなたが だめな わけじゃ ないよ。 くふう すれば へらせるんだ。"},
+  {t:"まえの よる、 チェックリストを みながら ランドセルに いれる。",good:true,fb:"あたまで おぼえる かわりに、 かみに かいて 「みえるように」 すると わすれにくいよ。"},
+  {t:"あさ おきてから、 いそいで そろえる。",fb:"あさは じかんが すくなくて、 あわて やすいんだ。 よるの うちに じゅんび する ほうが らくだよ。"}],
+  tip:"おぼえて おくのが にがてな ひとも いるよ。 チェックリスト や げんかんに おく 「わすれもの ボックス」が たすけて くれるよ。"},
+ {id:"c4",icon:"💬",title:"いますぐ いいたい！",text:"ともだちが はなして いる とちゅうで、 いいことを おもいついた！ いますぐ いいたい！",opts:[
+  {t:"ともだちの はなしの とちゅうで、 おおきな こえで いう。",fb:"おもいついたら すぐ いいたく なるよね。 でも ともだちは 「さいごまで ききたかった」と おもうかも。"},
+  {t:"ゆびを 1ぽん ぎゅっと にぎって、 はなしが おわるまで まつ。",good:true,fb:"ゆびを にぎるのは 「わすれないよ」の あいず。 まつ ことが できたね。"},
+  {t:"わすれちゃい そうだから、 はなすのを もう やめる。",fb:"あなたの いいたい ことは だいじだよ。 わすれない くふうを して、 じゅんばんを まとう。"}],
+  tip:"ひらめきが はやいのは あなたの すてきな ところ。 「まつ ための コツ」を つかうと、 もっと なかよく はなせるよ。"},
+ {id:"c5",icon:"🎮",title:"まけて くやしい！",text:"ゲームで まけちゃった。 くやしくて、 からだが かーっと あつく なってきた。",opts:[
+  {t:"コントローラーを なげる。",fb:"それくらい くやしいんだよね。 でも ものが こわれたり、 だれかが けがを したり するかも。"},
+  {t:"こころの なかで 「ストップ」と いって、 ゆっくり しんこきゅうを 3かい する。",good:true,fb:"いきを ゆっくり はくと、 きもちの ばくはつが しずまって くるよ。"},
+  {t:"ともだちに 「ずるい！」と おこる。",fb:"くやしい きもちは だいじな きもち。 でも ことばで ぶつけると、 ともだちも かなしく なっちゃう。"}],
+  tip:"きもちが きゅうに おおきく なるのは、 わるい ことじゃ ないよ。 「ストップ → しんこきゅう → かんがえる」の じゅんばんを おぼえて おこう。"},
+ {id:"c6",icon:"🧍",title:"じゅんばんが まてない",text:"きゅうしょくの まえ、 ながい れつに ならんで いる。 まつのが たいくつで、 がまん できない！",opts:[
+  {t:"まえの ひとを ぬかして すすむ。",fb:"はやく したいよね。 でも ぬかされた ひとは いやな きもちに なっちゃう。"},
+  {t:"こころの なかで 「あかい もの さがし」ゲームを する。",good:true,fb:"あたまを べつの ことに つかうと、 まつ じかんが みじかく かんじるよ。"},
+  {t:"その ばで ぐるぐる まわる。",fb:"うごきたく なるよね。 でも まわりの ひとに ぶつかっちゃうかも。 しずかに できる ことは ないかな？"}],
+  tip:"まつのが にがてな ひとは おおいよ。 「まつ あいだの ひとりゲーム」を いくつか きめて おくと べんりだよ。"},
+ {id:"c7",icon:"⏰",title:"ゲームが やめられない",text:"すきな ゲームに むちゅう。 「ごはん だよ」と よばれたけど、 やめられない。",opts:[
+  {t:"きこえない ふりを して つづける。",fb:"たのしい ときは やめるのが むずかしいよね。 でも おうちの ひとが こまっちゃうかも。"},
+  {t:"「あと 1かいで おわり」と いって、 ほんとうに 1かいで やめる。",good:true,fb:"じぶんで 「おわり」を きめると、 きりかえ やすく なるよ。 はじめる まえに タイマーを つかうのも いいね。"},
+  {t:"「いま いいところ なの！」と おこる。",fb:"いい ところで とめられると いやだよね。 つぎは はじめる まえに 「おわりの じかん」を きめて おこう。"}],
+  tip:"すきな ことに すごく しゅうちゅう するのを 「ハイパーフォーカス」と いうよ。 すごい ちからだけど、 きりかえには タイマーが たすけに なるよ。"},
+ {id:"c8",icon:"👂",title:"せつめいが わからない",text:"せんせいの せつめいが ながくて、 とちゅうから なにを するのか わからなく なっちゃった。",opts:[
+  {t:"となりの ひとを まねして、 てきとうに やる。",fb:"こまった ときの くふうだね。 でも ちがう ことを しちゃうかも。"},
+  {t:"てを あげて 「もう いちど おしえて ください」と きく。",good:true,fb:"きくのは はずかしい ことじゃ ないよ。 ちゃんと やりたい きもちが せんせいに つたわるよ。"},
+  {t:"わからないから、 なにも しないで まつ。",fb:"どうしよう って なるよね。 でも まって いても、 わからない ままに なっちゃう。"}],
+  tip:"ながい せつめいを おぼえるのが にがてな ひとも いるよ。 「こくばんに かいて ほしい」と おねがい するのも いい ほうほうだよ。"},
+ {id:"c9",icon:"😢",title:"いわれて かなしい",text:"ともだちに 「いつも おちつきが ないね」と いわれて、 すごく かなしく なった。",opts:[
+  {t:"いいかえして、 けんかに なる。",fb:"かなしいと おこりたく なるよね。 でも けんかに なると、 もっと つらく なっちゃうかも。"},
+  {t:"おうちの ひと や せんせいに、 かなしかった ことを はなす。",good:true,fb:"つらい きもちは、 ひとりで かかえなくて いいんだよ。 はなすと こころが かるく なるよ。"},
+  {t:"だれにも いわないで、 ずっと がまん する。",fb:"がまん できて えらいね。 でも がまん しすぎると こころが つかれちゃう。 しんじられる おとなに はなそう。"}],
+  tip:"ADHDは のうの 「とくちょう」。 あなたの せいかくが わるい わけでも、 がんばりが たりない わけでも ないよ。"},
+ {id:"c10",icon:"🗂️",title:"プリントが みつからない",text:"つくえの なかが ぐちゃぐちゃで、 だいじな プリントが みつからない。",opts:[
+  {t:"つくえの なかの ものを ぜんぶ ゆかに だす。",fb:"みつけたい きもち、 わかるよ。 でも もっと ちらかっちゃうかも。"},
+  {t:"「プリントは あおい ファイル」と、 いれる ばしょを きめる。",good:true,fb:"ものの 「おうち」を きめて おくと、 さがす じかんが へるよ。"},
+  {t:"さがすのを あきらめる。",fb:"さがすのは たいへんだよね。 こまったら、 おとなに てつだって もらおう。"}],
+  tip:"かたづけが にがてでも だいじょうぶ。 「いれる ばしょを きめる」「いろで わける」と、 ぐっと らくに なるよ。"},
+ {id:"c11",icon:"🤝",title:"ともだちが ちゅういされた",text:"クラスの ともだちが じゅぎょうちゅうに たちあがって、 せんせいに ちゅうい された。 みんなが わらって いる。",opts:[
+  {t:"みんなと いっしょに わらう。",fb:"つられて わらっちゃう ことも あるよね。 でも わらわれた ともだちは、 どんな きもちかな？"},
+  {t:"あとで 「だいじょうぶ？」と こえを かける。",good:true,fb:"やさしい ひとことで、 ともだちは すごく うれしく なるよ。"},
+  {t:"しらない ふりを する。",fb:"どうしたら いいか まようよね。 ちいさな ひとことでも、 ともだちの ちからに なれるよ。"}],
+  tip:"ひとは みんな、 にがてな ことと とくいな ことが あるよ。 ちがいを わらわないで、 たすけあえると すてきだね。"},
+ {id:"c12",icon:"📚",title:"もう やりたくない！",text:"さんすうの しゅくだいが たくさん！ みた だけで 「もう むり！」と おもって しまった。",opts:[
+  {t:"プリントを くしゃくしゃに する。",fb:"たくさん あると いやに なるよね。 でも それだと、 もっと たいへんに なっちゃう。"},
+  {t:"1もん だけ やって、 できたら シールを はる。",good:true,fb:"ちいさく わけると 「できた！」が ふえて、 つづけ やすく なるよ。"},
+  {t:"ぜんぶ いっきに やろうと する。",fb:"やる きもちは すばらしい！ でも いっきに やると つかれちゃうかも。 すこしずつ やろう。"}],
+  tip:"おおきな ことは、 ちいさく わけるのが コツ。 「1もん できた！」を たくさん あつめよう。 この アプリも 1かい 5もん だよ。"}
+];
+const INTRO=[
+ {e:"🧠",h:"ADHDって なあに？",b:`<p><ruby>ADHD<rt>エーディーエイチディー</rt></ruby>は、 のうの 「とくちょう」の ひとつ だよ。</p><p>わるい ことや、 だれかの せいでは ないよ。 おなじ とくちょうの ひとは、 クラスに 1〜2にん くらい いると いわれて いるよ。</p>`},
+ {e:"🔍",h:"どんな とくちょう？",b:`<ul><li><span>🎯</span><div>きが ちりやすい<small>いろんな ことが きになって、 しゅうちゅうが きれやすい</small></div></li><li><span>🏃</span><div>じっと するのが にがて<small>からだを うごかしたく なる</small></div></li><li><span>⚡</span><div>おもいついたら すぐ うごく<small>まつ ことや がまんが にがて</small></div></li></ul><p class="small">ひとに よって、 とくちょうの でかたは ちがうよ。</p>`},
+ {e:"🌈",h:"すてきな ところも いっぱい",b:`<ul><li><span>💡</span><div>アイデアが どんどん うかぶ</div></li><li><span>🔋</span><div>げんきいっぱいで こうどうりょくが ある</div></li><li><span>🔦</span><div>すきな ことには すごく しゅうちゅう できる</div></li></ul>`},
+ {e:"🛠️",h:"くふうで ぐんと らくに",b:`<p>タイマー、 チェックリスト、 からだを うごかす きゅうけい。 こまったら おとなに はなす。</p><p>ちいさな くふうで、 まいにちが すごく すごし やすく なるよ。 「あなたなら どうする？」で いっしょに かんがえて みよう！</p>`}
+];
+
+/* ================= stickers & moves ================= */
+const STICKERS=["🦖","🚀","🌈","🍩","🐙","🦄","🐳","🌻","🍓","🐱","🐶","🦊","🐸","🐼","🦁","🐧","🦋","🐞","🌟","🍉","🍦","🎈","🎨","🚂","⚽","🏆","🎸","🌙","🍀","🦕","🐠","🦜","🍒","🧁","🛸","🐢","🐬","🦒","🌋","💎"];
+const MOVES=[["🦘","その ばで ジャンプ 10かい！"],["🙆","おおきく のびーー！ そのまま 5びょう"],["🌀","うでを ぐるぐる 10かい まわそう"],["🦩","かたあしで たって みよう"],["🌬️","しんこきゅう 3かい。 すって… はいて…"],["🤖","ロボットに なって あるこう"],["✊","てを ぐー・ぱー 10かい"],["🐸","カエルみたいに しゃがんで ジャンプ 5かい"]];
+const PRAISE=["せいかい！","すごい！","やったね！","ばっちり！","いいね！","さすが！"];
+
+/* ================= router ================= */
+const view={name:"home",arg:null};
+let Q=null,SC=null;
+function go(name,arg){
+  stopSpeak();clearTimers();view.name=name;view.arg=arg;
+  (SCREENS[name]||SCREENS.home)(arg);
+  window.scrollTo(0,0);
+}
+const back=(to,label)=>`<div class="backrow"><button class="iconbtn" data-go="${to||"home"}" aria-label="もどる">←</button><h1>${label}</h1></div>`;
+
+/* ================= screens ================= */
+const SCREENS={};
+SCREENS.home=()=>{
+  const doneCount=Object.keys(S.done).length;
+  $app.innerHTML=`<div class="screen">
+   <div class="topbar"><div class="brand">ぐんぐんノート<small>カタカナ・さんすう・あなたなら どうする？</small></div>
+     <button class="pill" data-go="stickers" aria-label="ほし ${S.stars}こ"><span class="s">★</span>${S.stars}</button></div>
+   <p class="hello">きょうは なにを する？</p>
+   <div class="tiles">
+     <button class="tile kata" data-go="kataMenu"><span class="glyph">ア</span><span><span class="tname">カタカナ</span><span class="tsub">よめるかな？ 1かい ${CFG.q}もん</span></span></button>
+     <button class="tile math" data-go="mathMenu"><span class="glyph num">1+2</span><span><span class="tname">さんすう</span><span class="tsub">1ねんせい・2ねんせい</span></span></button>
+     <button class="tile life" data-go="lifeMenu"><span class="glyph">？</span><span><span class="tname">あなたなら どうする？</span><span class="tsub">ADHDの おはなし ${doneCount}/${SCENES.length}</span></span></button>
+   </div>
+   <div class="minis">
+     <button class="mini" data-go="stickers"><b>${S.stickers.length}</b>シールちょう</button>
+     <button class="mini" data-go="move" data-arg="home"><b>🤸</b>うごこう タイム</button>
+     <button class="mini" data-go="parent"><b>👪</b>おうちの かたへ</button>
+   </div></div>`;
+};
+function levelBtn(l){
+  const b=S.best[l.id];
+  const num=/[0-9+−×]/.test(l.g)&&!/\p{Extended_Pictographic}/u.test(l.g);
+  return `<button class="lv ${l.sec==="kataMenu"?"t-kata":"t-math"}" data-act="start" data-arg="${l.id}">
+    <span class="lvg ${num?"num":""}">${l.g}</span>
+    <span><span class="lvn">${l.name}${l.gr?`<span class="grade">${l.gr}ねん</span>`:""}</span><span class="lvs">${l.sub}</span></span>
+    <span class="lvb">${b?`<span class="s">★</span><br>${b.got}/${b.n}`:""}</span></button>`;
+}
+SCREENS.kataMenu=()=>{
+  $app.innerHTML=`<div class="screen t-kata">${back("home","カタカナ")}
+   <p class="lead">マスの なかの じを よんで、 こたえを タッチ。 🔊で よみあげ。</p>
+   <div class="levels">${LEVELS.filter(l=>l.sec==="kataMenu").map(levelBtn).join("")}</div></div>`;
+};
+SCREENS.mathMenu=()=>{
+  const ls=LEVELS.filter(l=>l.sec==="mathMenu");
+  $app.innerHTML=`<div class="screen t-math">${back("home","さんすう")}
+   <p class="sechead">1ねんせい</p><div class="levels">${ls.filter(l=>l.gr===1||l.gr==="1・2").map(levelBtn).join("")}</div>
+   <p class="sechead">2ねんせい</p><div class="levels">${ls.filter(l=>l.gr===2).map(levelBtn).join("")}</div></div>`;
+};
+
+/* ---------- quiz ---------- */
+function startQuiz(id){
+  const L=LV[id];if(!L)return go("home");
+  stopSpeak();clearTimers();
+  Q={L,qs:L.make(CFG.q),i:0,got:0,res:[]};
+  view.name="quiz";renderQ();window.scrollTo(0,0);
+}
+function renderQ(){
+  const q=Q.qs[Q.i];Q.tries=0;Q.lock=false;
+  $app.innerHTML=`<div class="screen quiz t-${q.theme}">
+   <div class="qbar"><button class="iconbtn" data-act="quitAsk" aria-label="やめる">✕</button>
+     <div class="dots" role="img" aria-label="${Q.qs.length}もん ちゅう ${Q.i+1}もんめ">${Q.qs.map((_,j)=>`<span class="dot ${j<Q.i?(Q.res[j]?"ok":"miss"):""} ${j===Q.i?"now":""}"></span>`).join("")}</div>
+     <button class="iconbtn" data-act="sayQ" aria-label="よみあげ">🔊</button></div>
+   <p class="prompt">${q.prompt}</p>
+   <div class="stage">${q.show}<svg class="maru" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44" pathLength="1"/></svg></div>
+   <div class="hint" id="hint" hidden>${q.hint||""}</div>
+   <div class="choices ${q.cls||""}">${q.choices.map(c=>`<button class="choice" data-act="pick" data-v="${c.v}">${c.html}</button>`).join("")}</div>
+   <div class="qfoot">${q.hint?`<button class="softbtn" data-act="hint" id="hintbtn">ヒントを みる</button>`:""}<span class="msg" id="msg" aria-live="assertive"></span></div>
+  </div>`;
+}
+function setMsg(t,cls){const m=$("#msg");if(m){m.textContent=t;m.className="msg "+(cls||"")}}
+function showHint(){const h=$("#hint"),b=$("#hintbtn");if(h)h.hidden=false;if(b)b.hidden=true}
+function nextQ(){Q.i++;if(Q.i<Q.qs.length){renderQ();window.scrollTo(0,0)}else showResult()}
+function hanamaru(){
+  let sp="";for(let t=0;t<=Math.PI*5;t+=0.12){const r=5+t*3.3;sp+=(sp?"L":"M")+(100+r*Math.cos(t-1.4)).toFixed(1)+" "+(100+r*Math.sin(t-1.4)).toFixed(1)}
+  let pe="";for(let d=0;d<=360;d+=2){const a=d*Math.PI/180,r=70+15*Math.abs(Math.sin(a*4.5));pe+=(pe?"L":"M")+(100+r*Math.cos(a)).toFixed(1)+" "+(100+r*Math.sin(a)).toFixed(1)}
+  return `<svg class="hanamaru" viewBox="0 0 200 200" role="img" aria-label="はなまる"><path class="hm-spiral" d="${sp}" pathLength="1"/><path class="hm-petal" d="${pe}" pathLength="1"/></svg>`;
+}
+function awardSticker(){
+  const left=STICKERS.filter(s=>!S.stickers.includes(s));if(!left.length)return null;
+  const s=any(left);S.stickers.push(s);return s;
+}
+function showResult(){
+  const L=Q.L,n=Q.qs.length,got=Q.got;
+  S.stars+=got;S.rounds++;
+  const b=S.best[L.id]||{got:0,n:n,plays:0};b.plays=(b.plays||0)+1;if(got/n>=b.got/b.n){b.got=got;b.n=n}S.best[L.id]=b;
+  const st=awardSticker();save();sfx("fan");
+  view.name="result";
+  $app.innerHTML=`<div class="screen result t-${L.sec==="kataMenu"?"kata":"math"}">
+    ${hanamaru()}
+    <h2 class="rtitle">さいごまで できたね！</h2>
+    <p class="rstars" role="img" aria-label="ほし ${got}こ">${'<span class="st on">★</span>'.repeat(got)}${'<span class="st">★</span>'.repeat(n-got)}</p>
+    <p class="rsub">${n}もん ちゅう ${got}もん せいかい</p>
+    ${st?`<div class="newst"><span class="stk pop">${st}</span><span>あたらしい シールを ゲット！</span></div>`:""}
+    <div class="rbtns">
+      <button class="bigbtn move" data-go="move" data-arg="${L.sec}">🤸 うごこう タイム</button>
+      <button class="bigbtn" data-act="again">もう いちど</button>
+      <button class="bigbtn ghost" data-go="${L.sec}">メニューへ</button>
+    </div></div>`;
+  window.scrollTo(0,0);
+  later(()=>speak(`さいごまで できたね！ ${got}もん せいかい！`),400);
+}
+
+/* ---------- life ---------- */
+SCREENS.lifeMenu=()=>{
+  const done=SCENES.filter(s=>S.done[s.id]).length;
+  $app.innerHTML=`<div class="screen t-life">${back("home","あなたなら どうする？")}
+   <button class="introbtn" data-go="lifeIntro" data-arg="0"><span class="e">🧠</span><span>ADHDって なあに？<small>まずは ここから よんで みよう（4まい）</small></span></button>
+   <div><p class="sechead">おはなし ${done} / ${SCENES.length} クリア</p><div class="progress" aria-hidden="true"><i style="width:${done/SCENES.length*100}%"></i></div></div>
+   <div class="sclist">${SCENES.map(s=>`<button class="sc" data-go="scene" data-arg="${s.id}"><span class="e">${s.icon}</span><span>${s.title}</span><span class="ck ${S.done[s.id]?"on":""}" aria-label="${S.done[s.id]?"クリア":""}">✓</span></button>`).join("")}</div></div>`;
+};
+SCREENS.lifeIntro=(arg)=>{
+  const i=Math.max(0,Math.min(INTRO.length-1,+arg||0)),c=INTRO[i];
+  const last=i===INTRO.length-1;
+  const firstUndone=(SCENES.find(s=>!S.done[s.id])||SCENES[0]).id;
+  $app.innerHTML=`<div class="screen t-life">
+   <div class="qbar"><button class="iconbtn" data-go="lifeMenu" aria-label="もどる">←</button><div class="qtitle">ADHDって なあに？</div><button class="iconbtn" data-act="sayIntro" aria-label="よみあげ">🔊</button></div>
+   <div class="icard"><div class="e">${c.e}</div><h2>${c.h}</h2>${c.b}</div>
+   <div class="idots">${INTRO.map((_,j)=>`<i class="${j===i?"on":""}"></i>`).join("")}</div>
+   <div class="inav">
+     ${i>0?`<button class="bigbtn ghost" data-go="lifeIntro" data-arg="${i-1}">← まえへ</button>`:`<button class="bigbtn ghost" data-go="lifeMenu">もどる</button>`}
+     ${last?`<button class="bigbtn" data-go="scene" data-arg="${firstUndone}">おはなしへ →</button>`:`<button class="bigbtn" data-go="lifeIntro" data-arg="${i+1}">つぎへ →</button>`}
+   </div></div>`;
+};
+SCREENS.scene=(id)=>{
+  const sc=SCENES.find(s=>s.id===id)||SCENES[0];
+  SC={sc,order:shuffle([0,1,2]),solved:false};
+  $app.innerHTML=`<div class="screen t-life">
+   <div class="qbar"><button class="iconbtn" data-go="lifeMenu" aria-label="もどる">←</button><div class="qtitle">おはなし ${SCENES.indexOf(sc)+1} / ${SCENES.length}</div><button class="iconbtn" data-act="sayScene" aria-label="よみあげ">🔊</button></div>
+   <div class="scard"><div class="sicon">${sc.icon}</div><h2 class="stitle">${sc.title}</h2><p class="stext">${sc.text}</p></div>
+   <p class="prompt">あなたなら どうする？</p>
+   <div class="sopts">${SC.order.map((oi,j)=>`<button class="sopt" data-act="scenePick" data-i="${oi}"><span class="mark">${"アイウ"[j]}</span><span>${sc.opts[oi].t}</span></button>`).join("")}</div>
+   <div class="sfb" id="sfb" hidden></div></div>`;
+};
+
+/* ---------- stickers ---------- */
+SCREENS.stickers=()=>{
+  $app.innerHTML=`<div class="screen">${back("home","シールちょう")}
+   <p class="lead">ラウンドを さいごまで やると、 シールが 1まい もらえるよ。 いま <b>${S.stickers.length}</b> / ${STICKERS.length}まい、 ほしは <b style="color:var(--star)">★${S.stars}</b></p>
+   <div class="sgrid">${STICKERS.map((s,i)=>S.stickers.includes(s)?`<span class="slot on">${s}</span>`:`<span class="slot" aria-label="まだ">?</span>`).join("")}</div></div>`;
+};
+
+/* ---------- movement break ---------- */
+SCREENS.move=(ret)=>{
+  const mv=any(MOVES),SEC=20,C=2*Math.PI*52;let left=SEC;
+  view.ret=ret||"home";
+  $app.innerHTML=`<div class="screen move">
+   <div class="qbar" style="width:100%"><button class="iconbtn" data-go="${view.ret}" aria-label="もどる">←</button><div class="qtitle" style="color:var(--ink)">うごこう タイム</div><span style="width:52px"></span></div>
+   <div class="mvemo">${mv[0]}</div><p class="mvtext">${mv[1]}</p>
+   <svg class="ring" viewBox="0 0 130 130" role="timer" aria-label="のこり じかん"><circle class="bg" cx="65" cy="65" r="52"/><circle class="fg" id="ringfg" cx="65" cy="65" r="52" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="0"/><text x="65" y="66" id="ringt">${SEC}</text></svg>
+   <div class="rbtns" style="width:100%;max-width:560px" id="mvbtns">
+     <button class="bigbtn ghost" data-go="move" data-arg="${view.ret}">べつの うごき</button>
+     <button class="bigbtn" data-go="${view.ret}">おわる</button></div></div>`;
+  speak(mv[1]);
+  every(()=>{
+    left--;const fg=$("#ringfg"),t=$("#ringt");if(!fg)return clearTimers();
+    fg.setAttribute("stroke-dashoffset",(C*(1-left/SEC)).toFixed(1));t.textContent=Math.max(0,left);
+    if(left<=3&&left>0)sfx("tick");
+    if(left<=0){clearTimers();S.moves++;S.stars++;save();sfx("fan");t.textContent="★";
+      $("#mvbtns").innerHTML=`<button class="bigbtn move" data-go="${view.ret}">できた！ ★+1</button>`;speak("できたね！ からだも あたまも すっきり！")}
+  },1000);
+};
+
+/* ---------- parent ---------- */
+SCREENS.parent=()=>{
+  const seg=(act,cur,vals,labels)=>`<span class="seg">${vals.map((v,i)=>`<button data-act="${act}" data-arg="${v}" aria-pressed="${String(cur)===String(v)}">${labels[i]}</button>`).join("")}</span>`;
+  $app.innerHTML=`<div class="screen">${back("home","おうちの かたへ")}
+   <section class="panel"><h2>せってい</h2>
+     <div class="setrow"><span>1回の問題数</span>${seg("setQ",CFG.q,[3,5,10],["3","5","10"])}</div>
+     <div class="setrow"><span>読み上げ（音声）</span>${seg("setVoice",CFG.voice,[true,false],["オン","オフ"])}</div>
+     <div class="setrow"><span>効果音</span>${seg("setSound",CFG.sound,[true,false],["オン","オフ"])}</div>
+     <p class="note">iPhone・iPadの消音スイッチがオンだと効果音が鳴りません。読み上げはSafariの日本語音声を使います。</p></section>
+   <section class="panel"><h2>がんばりの記録</h2>
+     <div class="stats"><div class="stat"><b>${S.rounds}</b><span>終えたラウンド</span></div><div class="stat"><b>${S.stars}</b><span>集めた★</span></div><div class="stat"><b>${S.stickers.length}/${STICKERS.length}</b><span>シール</span></div><div class="stat"><b>${Object.keys(S.done).length}/${SCENES.length}</b><span>ケーススタディ</span></div><div class="stat"><b>${S.moves}</b><span>うごこうタイム</span></div></div>
+     <p class="note">記録はこの端末のブラウザ内だけに保存されます。</p></section>
+   <section class="panel"><h2>このアプリの工夫（ADHDの特性に合わせて）</h2><ul>
+     <li>1回3〜10問の短いラウンド。上の丸で「あと何問か」がいつも見えます。</li>
+     <li>答えるとすぐに音とマルで反応。間違えても減点や×はなく、2回目で正解を示して次へ進みます。</li>
+     <li>ラウンドを最後までやると必ず「はなまる」とシール。正答率より「やりきったこと」を褒めます。</li>
+     <li>20秒の「うごこうタイム」で体を動かしてリセットできます。</li>
+     <li>文字は教科書体に近い書体で、カタカナはマス目（十字の補助線つき）に表示します。</li></ul></section>
+   <section class="panel"><h2>声かけのヒント</h2><ul>
+     <li>始める前に「5問だけやろう」と終わりを先に伝えると取りかかりやすくなります。</li>
+     <li>結果より取り組みを具体的に褒めてください（「最後までできたね」「ヒントを使えたね」）。</li>
+     <li>「あなたならどうする？」は正解当てではなく会話の材料です。「どうしてそれを選んだ？」「おうちだとどうする？」と話してみてください。</li>
+     <li>疲れていそうな日は1ラウンド＋うごこうタイムで十分です。</li></ul></section>
+   <section class="panel"><h2>ご注意</h2><p>このアプリは家庭学習の補助を目的としたもので、医療的な診断・治療・助言の代わりにはなりません。お子さんの様子で気になることがあれば、小児科医や専門機関にご相談ください。</p>
+     <div><button class="warnbtn" data-act="resetAsk">記録をリセット</button></div></section>
+  </div>`;
+};
+
+/* ================= actions ================= */
+const ACTS={
+  start:t=>startQuiz(t.dataset.arg),
+  again:()=>startQuiz(Q.L.id),
+  sayQ:()=>speak(Q&&Q.qs[Q.i].sayQ),
+  hint:()=>{showHint();const q=Q.qs[Q.i];speak(String(q.hint).replace(/<br>/g,"。 "))},
+  pick:t=>{
+    if(!Q||Q.lock)return;const q=Q.qs[Q.i];
+    if(t.dataset.v===q.ans){
+      Q.lock=true;t.classList.add("right");const ok=Q.tries<2;Q.res[Q.i]=ok;if(ok)Q.got++;
+      sfx("ok");const m=document.querySelector(".maru");if(m)m.classList.add("show");setMsg(any(PRAISE),"ok");speak(q.say);
+      later(nextQ,1600);
+    }else{
+      Q.tries++;t.classList.add("wrong");t.disabled=true;sfx("ng");
+      if(Q.tries>=2){
+        Q.lock=true;Q.res[Q.i]=false;
+        document.querySelectorAll(".choice").forEach(b=>{if(b.dataset.v===q.ans)b.classList.add("reveal")});
+        setMsg("こたえは これ！ つぎは できるよ","oops");speak("こたえは "+q.say);later(nextQ,2800);
+      }else{setMsg("おしい！ もう いちど","oops");if(q.hint)showHint()}
+    }
+  },
+  quitAsk:()=>{
+    const d=document.createElement("div");d.className="overlay";d.id="ov";
+    d.innerHTML=`<div class="dialog" role="dialog" aria-modal="true"><p>とちゅうで やめる？</p><div class="rbtns"><button class="bigbtn" data-act="quitNo">つづける</button><button class="bigbtn ghost" data-act="quitYes">やめる</button></div></div>`;
+    document.body.appendChild(d);
+  },
+  quitNo:()=>{const o=$("#ov");if(o)o.remove()},
+  quitYes:()=>{const o=$("#ov");if(o)o.remove();go(Q?Q.L.sec:"home")},
+  sayScene:()=>{const s=SC.sc;speak(`${s.title}。 ${s.text}。 あなたなら どうする？ `+SC.order.map((oi,j)=>`${"アイウ"[j]}。 ${s.opts[oi].t}`).join(" "))},
+  sayIntro:()=>{const i=+view.arg||0;const c=INTRO[i];speak(c.h+"。 "+c.b.replace(/<small>/g,"。 ").replace(/<\/li>/g,"。 "))},
+  scenePick:t=>{
+    if(!SC||SC.solved||t.disabled)return;
+    const o=SC.sc.opts[+t.dataset.i],fb=$("#sfb");fb.hidden=false;
+    if(o.good){
+      SC.solved=true;t.classList.add("right");
+      document.querySelectorAll(".sopt").forEach(b=>{if(b!==t)b.classList.add("dim")});
+      const first=!S.done[SC.sc.id];if(first){S.done[SC.sc.id]=true;S.stars++;save()}
+      sfx("ok");fb.className="sfb good";
+      fb.innerHTML=`<p class="fbh">いい アイデア！${first?'<span class="plus">★ +1</span>':""}</p><p>${o.fb}</p><div class="tip"><b>まめちしき</b><p>${SC.sc.tip}</p></div>
+        <div class="rbtns"><button class="bigbtn" data-act="nextScene">つぎの おはなし →</button><button class="bigbtn ghost" data-go="lifeMenu">もどる</button></div>`;
+      speak("いい アイデア！ "+o.fb+" まめちしき。 "+SC.sc.tip);
+    }else{
+      t.classList.add("wrong");t.disabled=true;sfx("ng");fb.className="sfb soft";
+      fb.innerHTML=`<p class="fbh">うーん、 どうかな？</p><p>${o.fb}</p><p class="small">ほかの ほうほうも えらんで みよう。</p>`;
+      speak(o.fb);
+    }
+    later(()=>fb.scrollIntoView({behavior:"smooth",block:"nearest"}),60);
+  },
+  nextScene:()=>{
+    const i=SCENES.indexOf(SC.sc);
+    const nxt=SCENES.slice(i+1).concat(SCENES.slice(0,i+1)).find(s=>!S.done[s.id])||SCENES[(i+1)%SCENES.length];
+    go("scene",nxt.id);
+  },
+  setQ:t=>{CFG.q=+t.dataset.arg;save();go("parent")},
+  setVoice:t=>{CFG.voice=t.dataset.arg==="true";save();go("parent");if(CFG.voice)speak("よみあげを オンに しました")},
+  setSound:t=>{CFG.sound=t.dataset.arg==="true";save();go("parent");sfx("ok")},
+  resetAsk:()=>{
+    const d=document.createElement("div");d.className="overlay";d.id="ov";
+    d.innerHTML=`<div class="dialog" role="dialog" aria-modal="true"><p>★・シール・記録をすべて消しますか？</p><div class="rbtns"><button class="bigbtn ghost" data-act="quitNo">やめる</button><button class="bigbtn" style="background:var(--oops);border-color:var(--oops)" data-act="resetYes">消す</button></div></div>`;
+    document.body.appendChild(d);
+  },
+  resetYes:()=>{const o=$("#ov");if(o)o.remove();S={stars:0,stickers:[],best:{},done:{},rounds:0,moves:0};save();go("parent")}
+};
+
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-go],[data-act]");if(!t||t.disabled)return;
+  ac();
+  if(t.dataset.go){sfx("tap");go(t.dataset.go,t.dataset.arg)}
+  else if(ACTS[t.dataset.act])ACTS[t.dataset.act](t,e);
+});
+document.addEventListener("dblclick",e=>e.preventDefault(),{passive:false});
+
+go("home");
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
